@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>future — short video feed</title>
+  <!-- Google Fonts + simple reset -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: #000000;
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      position: fixed;
+      touch-action: pan-y pinch-zoom; /* allows vertical swipe but prevents pull-to-refresh conflicts */
+    }
+
+    /* main vertical snap container */
+    .video-container {
+      height: 100vh;
+      width: 100%;
+      overflow-y: scroll;
+      scroll-snap-type: y mandatory;
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none; /* Firefox hide scrollbar */
+    }
+
+    .video-container::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* each video slide */
+    .video-slide {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      scroll-snap-align: start;
+      background-color: #0a0a0a;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* video element fills slide, object-fit cover for perfect aspect */
+    .video-element {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      pointer-events: none; /* allow overlay buttons to be clickable, but video still visible */
+    }
+
+    /* semi-transparent gradient overlay for better text readability */
+    .overlay-gradient {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 50%;
+      background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0) 100%);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* right side action bar (like, comment, share, music) */
+    .action-bar {
+      position: absolute;
+      bottom: 28%;
+      right: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 28px;
+      z-index: 15;
+      filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));
+    }
+
+    .action-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: transform 0.1s ease;
+    }
+
+    .action-item:active {
+      transform: scale(0.92);
+    }
+
+    .action-icon {
+      background: rgba(20, 20, 30, 0.65);
+      backdrop-filter: blur(12px);
+      border-radius: 100px;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      transition: all 0.2s;
+      border: 0.5px solid rgba(255,255,255,0.2);
+    }
+
+    .action-count {
+      font-size: 12px;
+      font-weight: 600;
+      color: white;
+      text-shadow: 0 1px 2px black;
+      letter-spacing: -0.2px;
+    }
+
+    /* user info & caption section (bottom left) */
+    .info-panel {
+      position: absolute;
+      bottom: 22px;
+      left: 16px;
+      right: 80px;
+      z-index: 12;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .user-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      pointer-events: auto;
+    }
+
+    .avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ff8a5c, #ff4d6d);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 18px;
+      color: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      border: 1.5px solid rgba(255,255,255,0.4);
+    }
+
+    .username {
+      font-weight: 700;
+      font-size: 16px;
+      letter-spacing: -0.2px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .follow-btn {
+      background: rgba(255,255,255,0.2);
+      backdrop-filter: blur(8px);
+      padding: 4px 12px;
+      border-radius: 40px;
+      font-size: 11px;
+      font-weight: 600;
+      color: white;
+      border: none;
+      pointer-events: auto;
+      cursor: pointer;
+      transition: 0.1s;
+    }
+
+    .follow-btn:active {
+      background: white;
+      color: black;
+    }
+
+    .caption {
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 1.3;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+      max-width: 90%;
+    }
+
+    .music-tag {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      background: rgba(0,0,0,0.4);
+      backdrop-filter: blur(6px);
+      padding: 6px 12px;
+      border-radius: 40px;
+      width: fit-content;
+      margin-top: 4px;
+      pointer-events: auto;
+    }
+
+    /* small future badge / logo */
+    .brand-watermark {
+      position: absolute;
+      top: 48px;
+      left: 16px;
+      z-index: 20;
+      font-weight: 800;
+      font-size: 20px;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #ffffff, #c0c0ff);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.3);
+      pointer-events: none;
+      font-family: inherit;
+    }
+
+    /* play/pause toggle visual hint */
+    .play-hint {
+      position: absolute;
+      bottom: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 64px;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      pointer-events: none;
+      z-index: 25;
+      color: rgba(255,255,255,0.9);
+      text-shadow: 0 2px 10px black;
+    }
+
+    /* loading / placeholder */
+    .loading-fallback {
+      position: absolute;
+      color: #aaa;
+      font-size: 14px;
+      background: #1a1a1a;
+      padding: 12px;
+      border-radius: 20px;
+    }
+
+    /* responsiveness */
+    @media (max-width: 500px) {
+      .action-icon {
+        width: 42px;
+        height: 42px;
+        font-size: 24px;
+      }
+      .action-bar {
+        gap: 20px;
+        bottom: 26%;
+      }
+      .username {
+        font-size: 14px;
+      }
+      .caption {
+        font-size: 13px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="video-container" id="videoFeed">
+  <!-- video slides will be injected dynamically via JS -->
+</div>
+
+<script>
+  // ------------------------------
+  // future — tiktok-style short video feed
+  // video samples ( royalty-free / demo sources )
+  // using publicly available sample videos (big buck bunny, earth timelapse, etc.)
+  // all videos are loopable short vertical clips that mimic authentic feed.
+  // ------------------------------
+  const FEED_DATA = [
+    {
+      id: 1,
+      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+      poster: "",
+      username: "✨ future vision",
+      userHandle: "@future",
+      avatarInitial: "F",
+      caption: "the future is now ✨🌍 welcome to the new era of short videos.",
+      music: "futurewave — limitless",
+      likes: 12430,
+      comments: 846,
+      shares: 2301,
+      isLiked: false
+    },
+    {
+      id: 2,
+      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+      poster: "",
+      username: "cyber_dreams",
+      userHandle: "@cyber",
+      avatarInitial: "C",
+      caption: "neon nights, digital dreams 🌀💜 #future",
+      music: "electronic pulse — synthwave edit",
+      likes: 8742,
+      comments: 512,
+      shares: 1034,
+      isLiked: false
+    },
+    {
+      id: 3,
+      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
+      poster: "",
+      username: "astro.nova",
+      userHandle: "@astronova",
+      avatarInitial: "A",
+      caption: "driving into the metaverse 🚗💨 future is NOW.",
+      music: "speed of light — future bass",
+      likes: 35678,
+      comments: 2100,
+      shares: 5400,
+      isLiked: false
+    },
+    {
+      id: 4,
+      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
+      poster: "",
+      username: "glitch.art",
+      userHandle: "@glitch",
+      avatarInitial: "G",
+      caption: "reality is just a simulation ✨ #futureart",
+      music: "glitchmode — original",
+      likes: 5210,
+      comments: 389,
+      shares: 712,
+      isLiked: false
+    }
+  ];
+
+  // Extend with a couple more variations using same sample domain but different clips
+  // we add 2 extra to make feed richer (total 6 slides)
+  const EXTRA_VIDEOS = [
+    {
+      id: 5,
+      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
+      username: "future.ai",
+      userHandle: "@futureai",
+      avatarInitial: "AI",
+      caption: "AI-generated universe 🧬 short stories. the future unfolds.",
+      music: "synth org — beyond time",
+      likes: 18920,
+      comments: 1340,
+      shares: 2980,
+      isLiked: false
+    },
+    {
+      id: 6,
+      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
+      username: "horizon_x",
+      userHandle: "@horizon",
+      avatarInitial: "H",
+      caption: "roads to tomorrow 🌄 explore the unknown. #future",
+      music: "horizon — extended mix",
+      likes: 9901,
+      comments: 702,
+      shares: 1588,
+      isLiked: false
+    }
+  ];
+
+  const fullFeed = [...FEED_DATA, ...EXTRA_VIDEOS];
+
+  // DOM elements
+  const videoFeedContainer = document.getElementById('videoFeed');
+
+  // store references to video elements and states per slide
+  let videoElements = new Map(); // key: slide index -> { videoEl, likeBtn, likeCountSpan, ... }
+  let currentPlayingIndex = 0;
+  let observer = null;
+  let isUserInteracting = false;
+
+  // Helper: format numbers like 12.4K, 1.2M
+  function formatCount(num) {
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+    return num.toString();
+  }
+
+  // create a single video slide with all interactive elements
+  function createVideoSlide(videoData, index) {
+    const slide = document.createElement('div');
+    slide.className = 'video-slide';
+    slide.setAttribute('data-index', index);
+    
+    // video element
+    const video = document.createElement('video');
+    video.className = 'video-element';
+    video.src = videoData.videoUrl;
+    video.playsInline = true;
+    video.loop = true;
+    video.muted = true;     // autoplay requires muted, we'll unmute optionally? but best practice: muted autoplay.
+    video.setAttribute('playsinline', 'true');
+    video.setAttribute('preload', 'metadata');
+    // preload poster (optional)
+    if (videoData.poster) video.poster = videoData.poster;
+    
+    // Overlay gradient
+    const gradientOverlay = document.createElement('div');
+    gradientOverlay.className = 'overlay-gradient';
+    
+    // Action bar (right side)
+    const actionBar = document.createElement('div');
+    actionBar.className = 'action-bar';
+    
+    // like button
+    const likeItem = document.createElement('div');
+    likeItem.className = 'action-item';
+    const likeIconSpan = document.createElement('div');
+    likeIconSpan.className = 'action-icon';
+    likeIconSpan.innerHTML = videoData.isLiked ? '❤️' : '🤍';
+    likeIconSpan.style.fontSize = '28px';
+    const likeCountSpan = document.createElement('span');
+    likeCountSpan.className = 'action-count';
+    likeCountSpan.innerText = formatCount(videoData.likes);
+    likeItem.appendChild(likeIconSpan);
+    likeItem.appendChild(likeCountSpan);
+    
+    // comment button
+    const commentItem = document.createElement('div');
+    commentItem.className = 'action-item';
+    const commentIcon = document.createElement('div');
+    commentIcon.className = 'action-icon';
+    commentIcon.innerHTML = '💬';
+    const commentCountSpan = document.createElement('span');
+    commentCountSpan.className = 'action-count';
+    commentCountSpan.innerText = formatCount(videoData.comments);
+    commentItem.appendChild(commentIcon);
+    commentItem.appendChild(commentCountSpan);
+    
+    // share button
+    const shareItem = document.createElement('div');
+    shareItem.className = 'action-item';
+    const shareIcon = document.createElement('div');
+    shareIcon.className = 'action-icon';
+    shareIcon.innerHTML = '📤';
+    const shareCountSpan = document.createElement('span');
+    shareCountSpan.className = 'action-count';
+    shareCountSpan.innerText = formatCount(videoData.shares);
+    shareItem.appendChild(shareIcon);
+    shareItem.appendChild(shareCountSpan);
+    
+    actionBar.appendChild(likeItem);
+    actionBar.appendChild(commentItem);
+    actionBar.appendChild(shareItem);
+    
+    // Info panel (bottom left)
+    const infoPanel = document.createElement('div');
+    infoPanel.className = 'info-panel';
+    
+    const userRow = document.createElement('div');
+    userRow.className = 'user-row';
+    const avatarDiv = document.createElement('div');
+    avatarDiv.className = 'avatar';
+    avatarDiv.innerText = videoData.avatarInitial.length > 2 ? videoData.avatarInitial[0] : videoData.avatarInitial;
+    const usernameSpan = document.createElement('div');
+    usernameSpan.className = 'username';
+    usernameSpan.innerHTML = `${videoData.username} <span style="font-weight:400; font-size:13px;">${videoData.userHandle}</span>`;
+    const followBtn = document.createElement('button');
+    followBtn.innerText = 'Follow';
+    followBtn.className = 'follow-btn';
+    followBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      followBtn.innerText = followBtn.innerText === 'Follow' ? 'Following' : 'Follow';
+      // simple toggle feedback
+    });
+    userRow.appendChild(avatarDiv);
+    userRow.appendChild(usernameSpan);
+    userRow.appendChild(followBtn);
+    
+    const captionDiv = document.createElement('div');
+    captionDiv.className = 'caption';
+    captionDiv.innerText = videoData.caption;
+    
+    const musicTag = document.createElement('div');
+    musicTag.className = 'music-tag';
+    musicTag.innerHTML = `🎵 ${videoData.music}`;
+    
+    infoPanel.appendChild(userRow);
+    infoPanel.appendChild(captionDiv);
+    infoPanel.appendChild(musicTag);
+    
+    // play hint element (optional)
+    const playHint = document.createElement('div');
+    playHint.className = 'play-hint';
+    playHint.innerHTML = '▶';
+    
+    // brand watermark on each slide (but we'll also have absolute at container level, but fine)
+    // to keep consistency, we'll add a small future badge to each slide? but we can reuse global one, but keep anyway.
+    // append all to slide
+    slide.appendChild(video);
+    slide.appendChild(gradientOverlay);
+    slide.appendChild(actionBar);
+    slide.appendChild(infoPanel);
+    slide.appendChild(playHint);
+    
+    // store video specific interactive references for updates
+    const slideRef = {
+      videoEl: video,
+      likeIcon: likeIconSpan,
+      likeCountSpan: likeCountSpan,
+      currentLikes: videoData.likes,
+      likedState: videoData.isLiked,
+      playHintEl: playHint,
+      commentBtn: commentItem,
+      shareBtn: shareItem
+    };
+    
+    // like functionality
+    likeItem.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (slideRef.likedState) {
+        // unlike
+        slideRef.likedState = false;
+        slideRef.currentLikes -= 1;
+        slideRef.likeIcon.innerHTML = '🤍';
+      } else {
+        slideRef.likedState = true;
+        slideRef.currentLikes += 1;
+        slideRef.likeIcon.innerHTML = '❤️';
+        // haptic-like effect
+        slideRef.likeIcon.style.transform = 'scale(1.2)';
+        setTimeout(() => { if(slideRef.likeIcon) slideRef.likeIcon.style.transform = ''; }, 150);
+      }
+      slideRef.likeCountSpan.innerText = formatCount(slideRef.currentLikes);
+    });
+    
+    // comment action alert
+    commentItem.addEventListener('click', (e) => {
+      e.stopPropagation();
+      // simple demo action
+      alert(`✨ future — comments demo: ${videoData.comments} comments. (interactive soon)`);
+    });
+    
+    shareItem.addEventListener('click', (e) => {
+      e.stopPropagation();
+      alert(`📤 share this future video: "${videoData.caption}"`);
+    });
+    
+    // double tap like gesture
+    let lastTap = 0;
+    video.addEventListener('touchstart', (e) => {
+      const now = Date.now();
+      if (now - lastTap < 300) {
+        e.preventDefault();
+        // double tap like
+        if (!slideRef.likedState) {
+          slideRef.likedState = true;
+          slideRef.currentLikes += 1;
+          slideRef.likeIcon.innerHTML = '❤️';
+          slideRef.likeCountSpan.innerText = formatCount(slideRef.currentLikes);
+          // show heart animation
+          playHint.innerHTML = '❤️';
+          playHint.style.opacity = '1';
+          setTimeout(() => { if(playHint) playHint.style.opacity = '0'; }, 500);
+          setTimeout(() => { if(playHint) playHint.innerHTML = '▶'; }, 600);
+        } else {
+          playHint.innerHTML = '❤️‍🔥';
+          playHint.style.opacity = '1';
+          setTimeout(() => { if(playHint) playHint.style.opacity = '0'; }, 400);
+          setTimeout(() => { if(playHint) playHint.innerHTML = '▶'; }, 500);
+        }
+      }
+      lastTap = now;
+    });
+    
+    // single tap to play/pause (optional)
+    video.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (video.paused) {
+        video.play().catch(e=>console.log);
+        playHint.innerHTML = '▶';
+        playHint.style.opacity = '0.6';
+        setTimeout(() => { if(playHint) playHint.style.opacity = '0'; }, 500);
+      } else {
+        video.pause();
+        playHint.innerHTML = '⏸';
+        playHint.style.opacity = '0.8';
+        setTimeout(() => { if(playHint) playHint.style.opacity = '0'; }, 600);
+      }
+    });
+    
+    return { slide, slideRef };
+  }
+  
+  // render all slides into container
+  function renderFeed() {
+    videoFeedContainer.innerHTML = '';
+    videoElements.clear();
+    fullFeed.forEach((item, idx) => {
+      const { slide, slideRef } = createVideoSlide(item, idx);
+      videoFeedContainer.appendChild(slide);
+      videoElements.set(idx, { slideRef, videoData: item, index: idx });
+    });
+    setupIntersectionObserver();
+    // play first video after render
+    setTimeout(() => {
+      const firstSlideData = videoElements.get(0);
+      if (firstSlideData && firstSlideData.slideRef.videoEl) {
+        playVideoIfVisible(0);
+      }
+    }, 200);
+  }
+  
+  // IntersectionObserver to handle autoplay/pause based on visibility
+  function setupIntersectionObserver() {
+    if (observer) observer.disconnect();
+    const options = {
+      root: videoFeedContainer,
+      threshold: 0.6  // when at least 60% visible
+    };
+    observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        const slideElement = entry.target;
+        const indexAttr = slideElement.getAttribute('data-index');
+        if (indexAttr === null) return;
+        const idx = parseInt(indexAttr, 10);
+        const slideData = videoElements.get(idx);
+        if (!slideData) return;
+        const video = slideData.slideRef.videoEl;
+        if (entry.isIntersecting) {
+          // this slide becomes active
+          currentPlayingIndex = idx;
+          video.play().catch(e => console.log("autoplay blocked? interaction needed", e));
+          // pause all other videos (performance)
+          videoElements.forEach((data, otherIdx) => {
+            if (otherIdx !== idx && data.slideRef.videoEl) {
+              data.slideRef.videoEl.pause();
+            }
+          });
+        } else {
+          // if not visible, pause to save resources
+          if (video && !video.paused) {
+            video.pause();
+          }
+        }
+      });
+    }, options);
+    
+    const slides = document.querySelectorAll('.video-slide');
+    slides.forEach(slide => observer.observe(slide));
+  }
+  
+  function playVideoIfVisible(index) {
+    const slideData = videoElements.get(index);
+    if (slideData && slideData.slideRef.videoEl) {
+      const video = slideData.slideRef.videoEl;
+      video.play().catch(e => console.log("playback failed", e));
+      // pause others
+      videoElements.forEach((data, idx) => {
+        if (idx !== index && data.slideRef.videoEl) {
+          data.slideRef.videoEl.pause();
+        }
+      });
+    }
+  }
+  
+  // ensure that when user manually scrolls, we also handle properly; IntersectionObserver already does
+  // additionally, we can handle window resize for any layout shift
+  window.addEventListener('resize', () => {
+    // re-snap or just re-check? not needed much.
+  });
+  
+  // also listen to scroll end to enforce only one video playing (extra safety)
+  let scrollTimeout;
+  videoFeedContainer.addEventListener('scroll', () => {
+    if (scrollTimeout) clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(() => {
+      // find most visible slide
+      const slides = document.querySelectorAll('.video-slide');
+      let maxRatio = 0;
+      let bestIndex = -1;
+      slides.forEach((slide, i) => {
+        const rect = slide.getBoundingClientRect();
+        const containerRect = videoFeedContainer.getBoundingClientRect();
+        const visibleHeight = Math.min(rect.bottom, containerRect.bottom) - Math.max(rect.top, containerRect.top);
+        const ratio = visibleHeight / rect.height;
+        if (ratio > maxRatio && ratio > 0.4) {
+          maxRatio = ratio;
+          bestIndex = i;
+        }
+      });
+      if (bestIndex !== -1 && bestIndex !== currentPlayingIndex) {
+        const data = videoElements.get(bestIndex);
+        if (data && data.slideRef.videoEl) {
+          data.slideRef.videoEl.play().catch(e=>{});
+          videoElements.forEach((d, idx) => {
+            if (idx !== bestIndex && d.slideRef.videoEl) d.slideRef.videoEl.pause();
+          });
+          currentPlayingIndex = bestIndex;
+        }
+      }
+    }, 120);
+  });
+  
+  // initial render
+  renderFeed();
+  
+  // small global mute/unmute? but we keep muted to respect autoplay policies,
+  // but many browsers allow muted autoplay. For a better experience, user can unmute via tap on video? but video tap toggles pause.
+  // To unmute we could add a small indicator, but to keep simple, all videos are muted but loop smoothly.
+  // For tiktok style, videos are often muted by default, we keep that. but we show music tag.
+  // we also add an extra hint that videos are muted (optional) but it's fine.
+  
+  // Adding a little instruction (optional) in brand
+  const brandDiv = document.createElement('div');
+  brandDiv.className = 'brand-watermark';
+  brandDiv.innerText = 'future ⚡';
+  document.body.appendChild(brandDiv);
+  
+  // user gesture notice: ensure any first interaction might enable audio context but fine.
+  console.log('future feed ready — tiktok style vertical shorts');
+</script>
+</body>
+</html>

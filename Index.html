@@ -729,3 +729,658 @@
 </script>
 </body>
 </html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <title>future — full experience</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000000;
+            font-family: system-ui, -apple-system, 'Inter', 'Segoe UI', sans-serif;
+            overflow-x: hidden;
+            color: white;
+        }
+
+        /* app shell - hidden pages become visible via routing */
+        .app-page {
+            display: none;
+            min-height: 100vh;
+            width: 100%;
+            background: #0a0a0a;
+            animation: fadeIn 0.25s ease;
+        }
+
+        .app-page.active-page {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px);}
+            to { opacity: 1; transform: translateY(0);}
+        }
+
+        /* bottom navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 15, 0.96);
+            backdrop-filter: blur(20px);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 10px 20px 22px;
+            border-top: 0.5px solid rgba(255,255,255,0.1);
+            z-index: 100;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            background: none;
+            border: none;
+            color: #8e8e93;
+            font-size: 12px;
+            font-weight: 500;
+            transition: 0.1s;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 30px;
+        }
+
+        .nav-item.active {
+            color: #ff3b6f;
+            text-shadow: 0 0 8px rgba(255,59,111,0.3);
+        }
+
+        .nav-icon {
+            font-size: 24px;
+        }
+
+        /* header style */
+        .page-header {
+            padding: 60px 20px 20px;
+            background: linear-gradient(135deg, #0f0f1a, #050507);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .page-title {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #fff, #ff99cc);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .container {
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* cards */
+        .card {
+            background: rgba(20, 20, 30, 0.7);
+            backdrop-filter: blur(12px);
+            border-radius: 28px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 0.5px solid rgba(255,255,255,0.08);
+        }
+
+        /* profile specific */
+        .profile-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 28px;
+        }
+        .profile-avatar {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(145deg, #ff6a88, #ff3b6f);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            font-weight: bold;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+            border: 3px solid rgba(255,255,255,0.2);
+        }
+        .stats-row {
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .stat {
+            font-weight: 700;
+            font-size: 22px;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #aaa;
+        }
+        .bio {
+            text-align: center;
+            color: #ccc;
+            margin-top: 8px;
+        }
+
+        /* login form */
+        .input-group {
+            margin-bottom: 20px;
+        }
+        .input-group label {
+            font-size: 14px;
+            font-weight: 500;
+            display: block;
+            margin-bottom: 8px;
+            color: #ddd;
+        }
+        input {
+            width: 100%;
+            padding: 16px 18px;
+            background: #1c1c24;
+            border: 1px solid #2c2c34;
+            border-radius: 24px;
+            color: white;
+            font-size: 16px;
+            transition: 0.2s;
+        }
+        input:focus {
+            outline: none;
+            border-color: #ff3b6f;
+            box-shadow: 0 0 0 2px rgba(255,59,111,0.3);
+        }
+        .btn {
+            background: #ff3b6f;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 40px;
+            font-weight: 700;
+            font-size: 16px;
+            color: white;
+            width: 100%;
+            cursor: pointer;
+            transition: 0.2s;
+            text-align: center;
+        }
+        .btn-outline {
+            background: transparent;
+            border: 1px solid #ff3b6f;
+            color: #ff3b6f;
+        }
+        .btn-secondary {
+            background: #2c2c38;
+        }
+        .flex-btns {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        /* video grid for home feed preview */
+        .video-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        .grid-video {
+            aspect-ratio: 9 / 16;
+            background: linear-gradient(145deg, #1e1e2a, #12121a);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            color: #ff99bb;
+            border: 1px solid rgba(255,255,255,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        .video-label {
+            position: absolute;
+            bottom: 12px;
+            left: 12px;
+            font-size: 12px;
+            background: rgba(0,0,0,0.6);
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+
+        /* settings list */
+        .settings-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0;
+            border-bottom: 0.5px solid rgba(255,255,255,0.08);
+        }
+        .settings-left {
+            display: flex;
+            gap: 14px;
+            align-items: center;
+        }
+        .toggle-switch {
+            width: 48px;
+            height: 28px;
+            background: #333;
+            border-radius: 40px;
+            position: relative;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .toggle-switch.active {
+            background: #ff3b6f;
+        }
+        .toggle-knob {
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: 0.2s;
+        }
+        .toggle-switch.active .toggle-knob {
+            left: 22px;
+        }
+
+        .welcome-hero {
+            text-align: center;
+            padding: 60px 20px;
+        }
+        .welcome-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+        }
+
+        footer {
+            height: 80px;
+        }
+
+        @media (max-width: 500px) {
+            .container {
+                padding: 16px;
+            }
+            .page-header {
+                padding: 50px 16px 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ==================== HOME PAGE (video feed style) ==================== -->
+    <div id="homePage" class="app-page">
+        <div style="position: relative; min-height: 100vh; background: #000;">
+            <!-- mini header -->
+            <div style="position: sticky; top: 0; padding: 16px 20px; background: rgba(0,0,0,0.7); backdrop-filter: blur(20px); z-index: 10; display: flex; justify-content: space-between; align-items: baseline;">
+                <h2 style="font-weight: 800; background: linear-gradient(135deg, #fff, #ff99cc); -webkit-background-clip: text; background-clip: text; color: transparent;">future</h2>
+                <span style="font-size: 14px; color:#ff99cc;">✨ for you</span>
+            </div>
+            <!-- tiktok style vertical feed preview (short videos demo) -->
+            <div style="height: calc(100vh - 70px); overflow-y: scroll; scroll-snap-type: y mandatory; scrollbar-width: none;">
+                <div style="scroll-snap-align: start; height: 85vh; position: relative; background: #0a0a0a; display: flex; align-items: center; justify-content: center; margin-bottom: 8px;">
+                    <video src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4" autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: cover; position: absolute;"></video>
+                    <div style="position: absolute; bottom: 80px; left: 16px; color: white; text-shadow: 0 1px 4px black;">
+                        <strong>@future_vision</strong>
+                        <p style="font-size:14px;">the future starts now ✨</p>
+                    </div>
+                </div>
+                <div style="scroll-snap-align: start; height: 85vh; position: relative; background: #111;">
+                    <video src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4" autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: cover; position: absolute;"></video>
+                    <div style="position: absolute; bottom: 80px; left: 16px; color: white;">
+                        <strong>@cyberdream</strong>
+                        <p>neon nights ⚡ #future</p>
+                    </div>
+                </div>
+                <div style="scroll-snap-align: start; height: 85vh; background: #121212; display: flex; align-items: center; justify-content: center; flex-direction: column;">
+                    <span style="font-size: 48px;">🚀</span>
+                    <p style="margin-top: 20px;">more coming soon — endless future</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== PROFILE PAGE ==================== -->
+    <div id="profilePage" class="app-page">
+        <div class="page-header">
+            <div class="page-title">Profile</div>
+        </div>
+        <div class="container">
+            <div class="profile-header">
+                <div class="profile-avatar">F</div>
+                <h2 style="font-size: 24px;">future_creator</h2>
+                <p style="color:#aaa;">@thefuture</p>
+                <button class="btn btn-outline" style="width: auto; padding: 8px 24px;" id="editProfileBtn">Edit profile</button>
+            </div>
+            <div class="stats-row">
+                <div><span class="stat">2.3K</span><div class="stat-label">followers</div></div>
+                <div><span class="stat">189</span><div class="stat-label">following</div></div>
+                <div><span class="stat">4.7K</span><div class="stat-label">likes</div></div>
+            </div>
+            <div class="card">
+                <div class="bio">🌍 building the future, one short video at a time. | tech + art | future fam ✨</div>
+            </div>
+            <div class="card">
+                <div style="font-weight: 600; margin-bottom: 12px;">📱 recent moments</div>
+                <div class="video-grid">
+                    <div class="grid-video">🎬<div class="video-label">future vibe</div></div>
+                    <div class="grid-video">🎥<div class="video-label">dreams</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== LOGIN PAGE ==================== -->
+    <div id="loginPage" class="app-page">
+        <div class="page-header">
+            <div class="page-title">Welcome back</div>
+            <p style="color:#aaa; margin-top: 8px;">sign in to continue to future</p>
+        </div>
+        <div class="container">
+            <div class="card">
+                <div class="input-group">
+                    <label>Email or username</label>
+                    <input type="text" id="loginUsername" placeholder="future_user@example.com" value="future@future.com">
+                </div>
+                <div class="input-group">
+                    <label>Password</label>
+                    <input type="password" id="loginPassword" placeholder="••••••••" value="future123">
+                </div>
+                <button class="btn" id="doLoginBtn">Sign in →</button>
+                <p style="text-align: center; margin-top: 20px; font-size: 13px; color:#aaa;">Don't have an account? <span id="goToWelcomeFromLogin" style="color:#ff3b6f; font-weight:600;">Join future</span></p>
+            </div>
+            <div id="loginMessage" style="margin-top: 12px; text-align: center; font-size: 14px;"></div>
+        </div>
+    </div>
+
+    <!-- ==================== WELCOME PAGE (signup / onboarding) ==================== -->
+    <div id="welcomePage" class="app-page">
+        <div class="welcome-hero">
+            <div class="welcome-icon">🚀✨</div>
+            <h1 style="font-size: 44px; letter-spacing: -1px;">future</h1>
+            <p style="font-size: 18px; margin: 12px 0;">short videos. infinite creativity.</p>
+            <div class="container" style="margin-top: 24px;">
+                <div class="card">
+                    <div class="input-group">
+                        <label>Username</label>
+                        <input type="text" id="signupName" placeholder="future_star" value="future_star">
+                    </div>
+                    <div class="input-group">
+                        <label>Email</label>
+                        <input type="email" id="signupEmail" placeholder="hello@future.com" value="hello@future.com">
+                    </div>
+                    <div class="input-group">
+                        <label>Password</label>
+                        <input type="password" id="signupPass" placeholder="create password" value="future123">
+                    </div>
+                    <button class="btn" id="doSignupBtn">Create account →</button>
+                    <p style="text-align: center; margin-top: 16px;">Already have an account? <span id="goToLoginFromWelcome" style="color:#ff3b6f; font-weight:600;">Sign in</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SETTINGS PAGE ==================== -->
+    <div id="settingsPage" class="app-page">
+        <div class="page-header">
+            <div class="page-title">Settings</div>
+        </div>
+        <div class="container">
+            <div class="card">
+                <div class="settings-item">
+                    <div class="settings-left">
+                        <span>🔔</span> <span>Push notifications</span>
+                    </div>
+                    <div class="toggle-switch" id="notifToggle"><div class="toggle-knob"></div></div>
+                </div>
+                <div class="settings-item">
+                    <div class="settings-left">
+                        <span>🌙</span> <span>Dark mode</span>
+                    </div>
+                    <div class="toggle-switch active" id="darkmodeToggle"><div class="toggle-knob"></div></div>
+                </div>
+                <div class="settings-item">
+                    <div class="settings-left">
+                        <span>🔒</span> <span>Private account</span>
+                    </div>
+                    <div class="toggle-switch" id="privateToggle"><div class="toggle-knob"></div></div>
+                </div>
+                <div class="settings-item">
+                    <div class="settings-left">
+                        <span>🌐</span> <span>Language</span>
+                    </div>
+                    <span style="color:#ff99cc;">English</span>
+                </div>
+                <div class="settings-item">
+                    <div class="settings-left">
+                        <span>📀</span> <span>Clear cache</span>
+                    </div>
+                    <button class="btn-outline" style="padding: 6px 16px; font-size:12px;" id="clearCacheBtn">Clear</button>
+                </div>
+            </div>
+            <button class="btn btn-secondary" id="logoutFromSettingsBtn" style="background: #2c2c38; margin-top: 16px;">Log out</button>
+            <footer></footer>
+        </div>
+    </div>
+
+    <!-- bottom navigation -->
+    <div class="bottom-nav">
+        <button class="nav-item" data-page="home"><span class="nav-icon">🏠</span><span>Home</span></button>
+        <button class="nav-item" data-page="profile"><span class="nav-icon">👤</span><span>Profile</span></button>
+        <button class="nav-item" data-page="login"><span class="nav-icon">🔑</span><span>Login</span></button>
+        <button class="nav-item" data-page="welcome"><span class="nav-icon">✨</span><span>Welcome</span></button>
+        <button class="nav-item" data-page="settings"><span class="nav-icon">⚙️</span><span>Settings</span></button>
+    </div>
+
+    <script>
+        // ---------- ROUTING & STATE MANAGEMENT ----------
+        let currentUser = null;  // null = not logged, else object
+
+        const pages = {
+            home: document.getElementById('homePage'),
+            profile: document.getElementById('profilePage'),
+            login: document.getElementById('loginPage'),
+            welcome: document.getElementById('welcomePage'),
+            settings: document.getElementById('settingsPage')
+        };
+
+        function showPage(pageId) {
+            Object.keys(pages).forEach(key => {
+                pages[key].classList.remove('active-page');
+            });
+            if (pages[pageId]) pages[pageId].classList.add('active-page');
+            // update nav active style
+            document.querySelectorAll('.nav-item').forEach(btn => {
+                if (btn.getAttribute('data-page') === pageId) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+            // small logic: if profile & not logged, maybe redirect? but we allow preview
+            if (pageId === 'profile' && !currentUser) {
+                // optional hint: show inside profile message
+                const profileContainer = document.querySelector('#profilePage .container');
+                let msgDiv = document.getElementById('profileGuestMsg');
+                if(!msgDiv){
+                    msgDiv = document.createElement('div');
+                    msgDiv.id = 'profileGuestMsg';
+                    msgDiv.className = 'card';
+                    msgDiv.style.backgroundColor = '#ff3b6f20';
+                    msgDiv.style.textAlign = 'center';
+                    msgDiv.innerHTML = '<p>👋 you are viewing as guest. <strong style="color:#ff99cc;">Log in</strong> to unlock full future experience.</p><button id="guestLoginBtn" class="btn-outline" style="margin-top:8px;">Go to Login</button>';
+                    const container = document.querySelector('#profilePage .container');
+                    if(container) container.prepend(msgDiv);
+                    document.getElementById('guestLoginBtn')?.addEventListener('click',()=> showPage('login'));
+                } 
+            } else {
+                const existingMsg = document.getElementById('profileGuestMsg');
+                if(existingMsg && currentUser) existingMsg.remove();
+            }
+        }
+
+        // update UI after login
+        function setLoggedInUser(user) {
+            currentUser = user;
+            // update profile info
+            const profileAvatarDiv = document.querySelector('#profilePage .profile-avatar');
+            const profileName = document.querySelector('#profilePage h2');
+            const profileHandle = document.querySelector('#profilePage p');
+            if(profileAvatarDiv) profileAvatarDiv.innerText = user.username.charAt(0).toUpperCase();
+            if(profileName) profileName.innerText = user.username;
+            if(profileHandle) profileHandle.innerText = '@' + user.username.toLowerCase();
+            // show success alert or message
+            const loginMsgDiv = document.getElementById('loginMessage');
+            if(loginMsgDiv) loginMsgDiv.innerHTML = '<span style="color:#4cd964;">✅ Logged in successfully!</span>';
+            setTimeout(()=> {
+                if(loginMsgDiv) loginMsgDiv.innerHTML = '';
+            }, 2000);
+            // navigate to home after login if login page active
+            if(pages.login.classList.contains('active-page')) showPage('home');
+        }
+
+        function logout() {
+            currentUser = null;
+            // reset login form fields if needed
+            document.getElementById('loginUsername').value = 'future@future.com';
+            document.getElementById('loginPassword').value = 'future123';
+            const msgDiv = document.getElementById('loginMessage');
+            if(msgDiv) msgDiv.innerHTML = '<span style="color:#ff9f4a;">👋 Logged out. See you soon!</span>';
+            setTimeout(()=> { if(msgDiv) msgDiv.innerHTML = ''; }, 2000);
+            // remove guest message and show fresh profile
+            const guestMsg = document.getElementById('profileGuestMsg');
+            if(guestMsg) guestMsg.remove();
+            // reset profile placeholder
+            const profileAvatarDiv = document.querySelector('#profilePage .profile-avatar');
+            if(profileAvatarDiv && !currentUser) profileAvatarDiv.innerText = 'F';
+            const profileNameEl = document.querySelector('#profilePage h2');
+            if(profileNameEl && !currentUser) profileNameEl.innerText = 'future_creator';
+            const profileHandleEl = document.querySelector('#profilePage p');
+            if(profileHandleEl && !currentUser) profileHandleEl.innerText = '@thefuture';
+            showPage('welcome');
+        }
+
+        // Event listeners
+        document.getElementById('doLoginBtn')?.addEventListener('click', () => {
+            const usernameInput = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            if(usernameInput === "" || password === "") {
+                document.getElementById('loginMessage').innerHTML = '<span style="color:#ff6b6b;">❌ Please fill all fields</span>';
+                return;
+            }
+            // simple mock login
+            const mockUser = { username: usernameInput.split('@')[0], email: usernameInput, fullname: usernameInput };
+            setLoggedInUser(mockUser);
+        });
+
+        document.getElementById('doSignupBtn')?.addEventListener('click', () => {
+            const newName = document.getElementById('signupName').value.trim();
+            const email = document.getElementById('signupEmail').value.trim();
+            const pass = document.getElementById('signupPass').value;
+            if(!newName || !email || !pass) {
+                alert("Please fill all fields");
+                return;
+            }
+            const newUser = { username: newName, email: email };
+            setLoggedInUser(newUser);
+            // optional show welcome toast
+            alert(`✨ Welcome ${newName} to future!`);
+        });
+
+        document.getElementById('logoutFromSettingsBtn')?.addEventListener('click', () => {
+            logout();
+        });
+
+        document.getElementById('goToWelcomeFromLogin')?.addEventListener('click', () => showPage('welcome'));
+        document.getElementById('goToLoginFromWelcome')?.addEventListener('click', () => showPage('login'));
+
+        // toggles for settings
+        const notifToggle = document.getElementById('notifToggle');
+        const darkToggle = document.getElementById('darkmodeToggle');
+        const privateToggle = document.getElementById('privateToggle');
+        
+        function initToggle(toggleEl, onText = "On", offText = "Off") {
+            if(!toggleEl) return;
+            toggleEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleEl.classList.toggle('active');
+                const isActive = toggleEl.classList.contains('active');
+                // no real backend but demo effect
+                console.log(`Toggle changed: ${isActive}`);
+            });
+        }
+        initToggle(notifToggle);
+        initToggle(darkToggle);
+        initToggle(privateToggle);
+
+        document.getElementById('clearCacheBtn')?.addEventListener('click', () => {
+            alert("🧹 Cache cleared (demo action) — future is fresh!");
+        });
+
+        document.getElementById('editProfileBtn')?.addEventListener('click', () => {
+            if(currentUser){
+                alert(`✏️ Edit profile for ${currentUser.username} — coming soon!`);
+            } else {
+                alert("🔐 Please log in to edit profile.");
+                showPage('login');
+            }
+        });
+
+        // nav buttons routing
+        document.querySelectorAll('.nav-item').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const page = btn.getAttribute('data-page');
+                if(page === 'login' && currentUser) {
+                    alert(`You're already logged in as ${currentUser.username}`);
+                    showPage('home');
+                } else {
+                    showPage(page);
+                }
+            });
+        });
+
+        // detect if no user -> default show welcome page at start
+        if(!currentUser) {
+            showPage('welcome');
+        } else {
+            showPage('home');
+        }
+
+        // For demo: if coming from login and want to see profile logged state, ensure
+        // Also fix any video autoplay on home scroll? just minimal
+        // Ensure Home videos play nicely: add observer to autoplay only when visible? simplified, already working
+        const homeVideos = document.querySelectorAll('#homePage video');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if(entry.isIntersecting) {
+                    entry.target.play().catch(e=>{});
+                } else {
+                    entry.target.pause();
+                }
+            });
+        }, { threshold: 0.5 });
+        homeVideos.forEach(vid => observer.observe(vid));
+        
+        // also manual fix for any dynamic height
+        window.dispatchEvent(new Event('resize'));
+    </script>
+</body>
+</html>
